@@ -1,0 +1,138 @@
+
+def bayesian_weather_decision(city_name: str):
+    """
+    Computes conditional probabilities using Bayes' theorem to assess rain forecast reliability,
+    and compares umbrella-carrying strategies based on two types of risk.
+
+    Parameters:
+    - city_name (str): One of "Sun-City", "Equal-City", or "Rain-City"
+    """
+
+    # Conditional probabilities
+    p_forecast_given_rain = 0.8  # P(Forecast | Rain)
+    p_no_forecast_given_no_rain = 0.9  # P(No Forecast | No Rain)
+
+    p_no_forecast_given_rain = 1 - p_forecast_given_rain
+    p_forecast_given_no_rain = 1 - p_no_forecast_given_no_rain
+
+    # Prior probabilities of rain per city
+    city_priors = {"Sun-City": 0.05, "Equal-City": 0.5, "Rain-City": 0.95}
+    p_rain = city_priors[city_name]
+    p_no_rain = 1 - p_rain
+
+    # Total probabilities
+    p_forecast = p_forecast_given_rain * p_rain + p_forecast_given_no_rain * p_no_rain
+    p_no_forecast = 1 - p_forecast
+
+    # Bayes' Theorem: Posterior probabilities
+    p_rain_given_forecast = (p_forecast_given_rain * p_rain) / p_forecast
+    p_rain_given_no_forecast = (p_no_forecast_given_rain * p_rain) / p_no_forecast
+    p_no_rain_given_forecast = (p_forecast_given_no_rain * p_no_rain) / p_forecast
+    p_no_rain_given_no_forecast = (p_no_forecast_given_no_rain * p_no_rain) / p_no_forecast
+
+    print(f"Results for {city_name}:")
+    print(f"  P(Rain | Forecast = Rain):       {p_rain_given_forecast:.4f}")
+    print(f"  P(No Rain | Forecast = Rain):    {p_no_rain_given_forecast:.4f}")
+    print(f"  P(Rain | Forecast = No Rain):    {p_rain_given_no_forecast:.4f}")
+    print(f"  P(No Rain | Forecast = No Rain): {p_no_rain_given_no_forecast:.4f}\n")
+
+    # Strategy B: Follow the forecast
+    risk1_b = p_forecast * p_no_rain_given_forecast
+    risk2_b = p_no_forecast * p_rain_given_no_forecast
+
+    print("Strategy B: Follow the forecast")
+    print(f"   Risk 1: carry umbrella, no rain → {risk1_b * 100:.1f}%")
+    print(f"   Risk 2: no umbrella, it rains   → {risk2_b * 100:.1f}%")
+
+    # Strategy A: Always carry an umbrella
+    risk1_a = p_no_rain
+    risk2_a = 0
+
+    print("\nStrategy A: Always carry an umbrella")
+    print(f"   Risk 1: carry umbrella, no rain → {risk1_a * 100:.1f}%")
+    print(f"   Risk 2: no umbrella, it rains   → {risk2_a * 100:.1f}%")
+
+    # Strategy C: Never carry an umbrella
+    risk1_c = 0
+    risk2_c = p_rain
+
+    print("\nStrategy C: Never carry an umbrella")
+    print(f"   Risk 1: carry umbrella, no rain → {risk1_c * 100:.1f}%")
+    print(f"   Risk 2: no umbrella, it rains   → {risk2_c * 100:.1f}%")
+
+    for weight in [10, 100]:
+        print(f"\n--- Weighted Risk (Risk2 = {weight}× Risk1) ---")
+        total_a = risk1_a + weight * risk2_a
+        total_b = risk1_b + weight * risk2_b
+        total_c = risk1_c + weight * risk2_c
+
+        print(f"  Strategy A: {total_a:.2f}")
+        print(f"  Strategy B: {total_b:.2f}")
+        print(f"  Strategy C: {total_c:.2f}")
+
+        best_strategy = min([(total_a, 'A'), (total_b, 'B'), (total_c, 'C')], key=lambda x: x[0])
+        print(f"➤ Best strategy: {best_strategy[1]}")
+
+
+def simulate_weather_predictions(city_name: str, num_days: int):
+    """
+    Simulates weather and forecasts using Monte Carlo method to empirically derive Bayes probabilities.
+
+    Parameters:
+    - city_name (str): One of "Sun-City", "Equal-City", or "Rain-City"
+    - num_days (int): Number of simulation days
+    """
+
+    # Probabilities
+    p_forecast_given_rain = 0.8
+    p_no_forecast_given_no_rain = 0.9
+    p_forecast_given_no_rain = 1 - p_no_forecast_given_no_rain
+    p_no_forecast_given_rain = 1 - p_forecast_given_rain
+
+    # City priors
+    city_priors = {"Sun-City": 0.05, "Equal-City": 0.5, "Rain-City": 0.95}
+    p_rain = city_priors[city_name]
+
+    # Initialize counts
+    count_rain = count_no_rain = 0
+    count_forecast = count_no_forecast = 0
+    rain_given_forecast = rain_given_no_forecast = 0
+    no_rain_given_forecast = no_rain_given_no_forecast = 0
+
+    rng = np.random.default_rng()
+
+    for _ in range(num_days):
+        rain = rng.random() < p_rain
+        if rain:
+            forecast = rng.random() < p_forecast_given_rain
+        else:
+            forecast = rng.random() < p_forecast_given_no_rain
+
+        if forecast:
+            count_forecast += 1
+            if rain:
+                rain_given_forecast += 1
+            else:
+                no_rain_given_forecast += 1
+        else:
+            count_no_forecast += 1
+            if rain:
+                rain_given_no_forecast += 1
+            else:
+                no_rain_given_no_forecast += 1
+
+    # Posterior estimates
+    p_rain_forecast = rain_given_forecast / count_forecast if count_forecast else 0
+    p_no_rain_forecast = no_rain_given_forecast / count_forecast if count_forecast else 0
+    p_rain_no_forecast = rain_given_no_forecast / count_no_forecast if count_no_forecast else 0
+    p_no_rain_no_forecast = no_rain_given_no_forecast / count_no_forecast if count_no_forecast else 0
+
+    forecast_errors = no_rain_given_forecast + rain_given_no_forecast
+    forecast_error_rate = forecast_errors / num_days
+
+    print(f"\nMonte Carlo Simulation for {city_name} over {num_days} days:")
+    print(f"  P(Rain | Forecast = Rain):       {p_rain_forecast:.4f}")
+    print(f"  P(No Rain | Forecast = Rain):    {p_no_rain_forecast:.4f}")
+    print(f"  P(Rain | Forecast = No Rain):    {p_rain_no_forecast:.4f}")
+    print(f"  P(No Rain | Forecast = No Rain): {p_no_rain_no_forecast:.4f}")
+    print(f"  ➤ Forecast Error Rate: {forecast_error_rate * 100:.2f}%")
